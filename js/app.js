@@ -2713,6 +2713,57 @@ function initLessonPractice(lesson){
   paint();
 }
 
+
+/* ================= OFICIÁLNÍ TESTY / АЛБАН ЁСНЫ ТЕСТҮҮД (jen odkazy) ================= */
+const OFFICIAL_TESTS=[
+  {sec:'m',label:'M5A',year:2026,url:'https://prijimacky.cermat.gov.cz/files/files/dokumenty/M5A_2026_TS.pdf'},
+  {sec:'m',label:'M5B',year:2026,url:'https://prijimacky.cermat.gov.cz/files/files/dokumenty/M5B_2026_TS.pdf'},
+  {sec:'m',label:'M5C',year:2026,url:'https://prijimacky.cermat.gov.cz/files/files/M5C_2026_TS.pdf'},
+  {sec:'m',label:'M5D',year:2026,url:'https://prijimacky.cermat.gov.cz/files/files/M5D_2026_TS.pdf'},
+  {sec:'c',label:'C5A',year:2026,url:'https://prijimacky.cermat.gov.cz/files/files/dokumenty/C5A_2026_TS.pdf'},
+  {sec:'c',label:'C5B',year:2026,url:'https://prijimacky.cermat.gov.cz/files/files/dokumenty/C5B_2026_TS.pdf'},
+  {sec:'c',label:'C5C',year:2026,url:'https://prijimacky.cermat.gov.cz/files/files/C5C_2026_TS.pdf'},
+  {sec:'c',label:'C5D',year:2026,url:'https://prijimacky.cermat.gov.cz/files/files/C5D_2026_TS.pdf'},
+  {sec:'c',label:'C5A',year:2025,url:'https://prijimacky.cermat.gov.cz/files/files/C5A_2025_TS.pdf'},
+  {sec:'c',label:'C5B',year:2025,url:'https://prijimacky.cermat.gov.cz/files/files/C5B_2025_TS.pdf'}
+];
+let officialTimer=null;
+function buildOfficialLinks(host){
+  clearInterval(officialTimer);
+  const wrap=document.createElement('section');wrap.className='topic-section';
+  const links=sec=>OFFICIAL_TESTS.filter(t=>t.sec===sec).map(t=>`<a class="off-link" href="${t.url}" target="_blank" rel="noopener noreferrer"><span class="off-ico">📄</span><span><b>${t.label}</b><small>${T(`Test ${t.year} (PDF)`,`${t.year} оны тест (PDF)`)}</small></span><span class="off-go">↗</span></a>`).join('');
+  wrap.innerHTML=`
+    <h2 class="section-title">${T('Oficiální testy CERMAT 2026','CERMAT 2026 албан ёсны тестүүд')}</h2>
+    <p class="section-sub">${T('Odkazy vedou na oficiální web CERMAT a otevřou se v novém okně. Testy do aplikace nekopírujeme – patří CERMAT. Vyřeš je na papíře a čas si změř časovačem níže.','Холбоосууд CERMAT-ийн албан ёсны сайт руу шинэ цонхонд нээгдэнэ. Тестүүдийг апп руу хуулаагүй – тэд CERMAT-ийн өмч. Цаасан дээр бодож, хугацаагаа доорх тоолуураар хэмжээрэй.')}</p>
+    <h3 class="ls-h">${T('Matematika (M5) – 70 minut','Математик (M5) – 70 минут')}</h3><div class="off-list">${links('m')}</div>
+    <h3 class="ls-h">${T('Český jazyk (C5) – 60 minut','Чех хэл (C5) – 60 минут')}</h3><div class="off-list">${links('c')}</div>
+    <div class="timer-card">
+      <div class="timer-title">⏱ ${T('Časovač pro papírový test','Цаасан тестийн тоолуур')}</div>
+      <div class="timer-display" id="off-timer">70:00</div>
+      <div class="timer-btns">
+        <button type="button" class="ghost-btn is-primary" data-min="70">${T('Matematika 70 min','Математик 70 мин')}</button>
+        <button type="button" class="ghost-btn is-primary" data-min="60">${T('Čeština 60 min','Чех хэл 60 мин')}</button>
+        <button type="button" class="ghost-btn" id="off-timer-stop">${T('Stop / reset','Зогсоох / шинэчлэх')}</button>
+      </div>
+      <p class="off-hint">${T('Po skončení si zkontroluj správné odpovědi (klíč) na webu CERMAT.','Дууссаны дараа зөв хариуг (түлхүүр) CERMAT-ийн сайт дээрээс шалгана уу.')}</p>
+    </div>
+    <p class="off-hint">${T('Odkaz na hlavní web','Үндсэн сайтын холбоос')}: <a href="https://cermat.gov.cz/" target="_blank" rel="noopener noreferrer">cermat.gov.cz</a></p>`;
+  host.appendChild(wrap);
+  const disp=wrap.querySelector('#off-timer');
+  const show=sec=>{disp.textContent=fmtTime(Math.max(0,sec));disp.classList.toggle('is-low',sec<=300&&sec>0);};
+  wrap.querySelectorAll('[data-min]').forEach(btn=>btn.addEventListener('click',()=>{
+    clearInterval(officialTimer);
+    const end=Date.now()+Number(btn.dataset.min)*60000;show(Number(btn.dataset.min)*60);
+    officialTimer=setInterval(()=>{
+      const rem=Math.round((end-Date.now())/1000);
+      if(!document.body.contains(disp)){clearInterval(officialTimer);return;}
+      show(rem);
+      if(rem<=0){clearInterval(officialTimer);disp.textContent=T('Čas vypršel!','Хугацаа дууслаа!');disp.classList.add('is-low');try{playStreakSound();}catch(e){}}
+    },500);
+  }));
+  wrap.querySelector('#off-timer-stop').addEventListener('click',()=>{clearInterval(officialTimer);disp.textContent='70:00';disp.classList.remove('is-low');});
+}
+
 /* ---------- Render ---------- */
 const app=document.getElementById('app');
 
@@ -2766,6 +2817,7 @@ function renderMenu(){
     <div class="tabs">
       <button type="button" class="tab ${state.tab==='practice'?'is-active':''}" data-tab="practice">${T('Procvičování','Дасгал')}</button>
       <button type="button" class="tab ${state.tab==='lessons'?'is-active':''}" data-tab="lessons">${T('Výuka – jak na to','Хичээл – яаж бодох вэ')}</button>
+      <button type="button" class="tab ${state.tab==='official'?'is-active':''}" data-tab="official">${T('Oficiální testy','Албан ёсны тест')}</button>
     </div>
     ${state.tab==='practice'?`<div class="topic-search-wrap" role="search">
       <span class="topic-search-icon" aria-hidden="true">⌕</span>
@@ -2779,8 +2831,9 @@ function renderMenu(){
   `;
   const host=document.getElementById('topic-sections');
   const grids={};
-  const lessonsTab=state.tab==='lessons';
-  if(lessonsTab) buildLessonCards(host);
+  const lessonsTab=state.tab!=='practice';
+  if(state.tab==='lessons') buildLessonCards(host);
+  if(state.tab==='official') buildOfficialLinks(host);
   (lessonsTab?[]:SECTIONS).forEach(sec=>{
     const wrap=document.createElement('section'); wrap.className='topic-section';
     wrap.innerHTML=`<h2 class="section-title">${sec.title[LANG]}</h2><p class="section-sub">${sec.sub[LANG]}</p>`;
