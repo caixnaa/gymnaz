@@ -573,3 +573,15 @@ button:disabled{cursor:not-allowed}
 .timer-card .ghost-btn.is-primary{background:#ffc414;color:#232a4a}
 .off-hint{font-size:13.5px;color:var(--ink-soft);line-height:1.6}
 .timer-card .off-hint{color:#cdd3fb;margin:10px 0 0}
+
+/* ---------- Answer sheet ---------- */
+.sheet-select{width:100%;max-width:340px;font-family:'Inter',sans-serif;font-size:15px;padding:11px 14px;border-radius:12px;border:0;margin:6px 0 12px}
+.sh-grid{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.sh-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fffaf0;border:1.5px solid #e7ddc4;border-radius:14px;padding:8px 12px}
+.sh-num{font-family:'JetBrains Mono',monospace;font-weight:800;min-width:26px;color:var(--indigo)}
+.sh-abcd{display:flex;gap:5px}
+.sh-l{width:34px;height:34px;border-radius:10px;border:1.5px solid #e7ddc4;background:#fff;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ink-soft);transition:transform .12s var(--ease-smooth)}
+.sh-l:active{transform:scale(.92)}
+.sh-l.is-on{background:var(--indigo);border-color:var(--indigo);color:#fff}
+.sh-x{flex:1;min-width:140px;font-family:'Inter',sans-serif;font-size:14.5px;padding:8px 12px;border-radius:10px;border:1.5px solid #e7ddc4;background:#fff;outline:none}
+.sh-x:focus{border-color:var(--indigo)}

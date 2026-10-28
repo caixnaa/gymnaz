@@ -2747,6 +2747,10 @@ function buildOfficialLinks(host){
       </div>
       <p class="off-hint">${T('Po skončení si zkontroluj správné odpovědi (klíč) na webu CERMAT.','Дууссаны дараа зөв хариуг (түлхүүр) CERMAT-ийн сайт дээрээс шалгана уу.')}</p>
     </div>
+    <div class="timer-card sheet-start"><div class="timer-title">📝 ${T('Odpovědní arch + časovač','Хариултын хуудас + тоолуур')}</div>
+      <p class="off-hint">${T('Vyber test, otevři PDF a odpovědi zapisuj do arch na této stránce – jako u zkoušky.','Тестээ сонгоод PDF-ийг нээж, хариултаа энэ сайтын хуудсанд бич – шалгалт шиг.')}</p>
+      <select id="sheet-select" class="sheet-select">${OFFICIAL_TESTS.map((t,i)=>`<option value="${i}">${t.label} ${t.year} (${t.sec==='m'?T('Matematika 70 min','Математик 70 мин'):T('Čeština 60 min','Чех хэл 60 мин')})</option>`).join('')}</select>
+      <div class="timer-btns"><button type="button" class="ghost-btn is-primary" id="sheet-start">${T('Začít','Эхлэх')}</button></div></div>
     <p class="off-hint">${T('Odkaz na hlavní web','Үндсэн сайтын холбоос')}: <a href="https://cermat.gov.cz/" target="_blank" rel="noopener noreferrer">cermat.gov.cz</a></p>`;
   host.appendChild(wrap);
   const disp=wrap.querySelector('#off-timer');
@@ -2761,7 +2765,67 @@ function buildOfficialLinks(host){
       if(rem<=0){clearInterval(officialTimer);disp.textContent=T('Čas vypršel!','Хугацаа дууслаа!');disp.classList.add('is-low');try{playStreakSound();}catch(e){}}
     },500);
   }));
+  wrap.querySelector('#sheet-start').addEventListener('click',()=>{clearInterval(officialTimer);startSheet(Number(wrap.querySelector('#sheet-select').value));});
   wrap.querySelector('#off-timer-stop').addEventListener('click',()=>{clearInterval(officialTimer);disp.textContent='70:00';disp.classList.remove('is-low');});
+}
+
+
+/* ================= ODPOVĚDNÍ ARCH / ХАРИУЛТЫН ХУУДАС (bez textu úloh) ================= */
+function sheetKey(t){return 'sheet_'+t.label+'_'+t.year;}
+function loadSheet(t){try{return JSON.parse(localStorage.getItem(sheetKey(t)))||{};}catch(e){return {};}}
+function saveSheet(t,a){try{localStorage.setItem(sheetKey(t),JSON.stringify(a));}catch(e){}}
+function startSheet(idx){
+  const t=OFFICIAL_TESTS[idx],math=t.sec==='m';
+  state.sheet={t,n:math?14:28,minutes:math?70:60,answers:loadSheet(t),endAt:Date.now()+(math?70:60)*60000,done:false};
+  state.view='sheet';startSheetTimer();render();window.scrollTo({top:0});
+}
+function startSheetTimer(){
+  clearInterval(state.sheetTimer);
+  state.sheetTimer=setInterval(()=>{
+    const sh=state.sheet;if(!sh||sh.done||state.view!=='sheet'){clearInterval(state.sheetTimer);return;}
+    const rem=Math.max(0,Math.round((sh.endAt-Date.now())/1000));
+    const el=document.getElementById('sheet-timer');if(el){el.textContent=fmtTime(rem);el.classList.toggle('is-low',rem<=300);}
+    if(rem<=0){sh.done=true;sh.timeout=true;clearInterval(state.sheetTimer);state.view='sheetdone';render();}
+  },500);
+}
+function renderSheet(){
+  const sh=state.sheet,t=sh.t,rem=Math.max(0,Math.round((sh.endAt-Date.now())/1000));
+  const rows=[];
+  for(let i=1;i<=sh.n;i++){
+    const a=sh.answers[i]||{c:'',x:''};
+    rows.push(`<div class="sh-row"><span class="sh-num">${i}</span><div class="sh-abcd">${['A','B','C','D','E','F'].map(l=>`<button type="button" class="sh-l${a.c===l?' is-on':''}" data-i="${i}" data-l="${l}">${l}</button>`).join('')}</div><input class="sh-x" type="text" data-i="${i}" value="${escAttr(a.x||'')}" placeholder="${T('písemná odpověď / A N A N','писмэн хариулт / A N A N')}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>`);
+  }
+  app.innerHTML=`<div class="exercise-shell"><div class="exercise-page">
+    <div class="test-bar"><div class="test-timer${rem<=300?' is-low':''}" id="sheet-timer">${fmtTime(rem)}</div>
+      <div class="test-meta">${t.label} ${t.year}</div>
+      <a class="ghost-btn is-primary" href="${t.url}" target="_blank" rel="noopener noreferrer">${T('Otevřít test (PDF) ↗','Тест нээх (PDF) ↗')}</a>
+      <button type="button" class="ghost-btn" id="sheet-done">${T('Dokončit','Дуусгах')}</button></div>
+    <p class="off-hint">${T('Otevři test v novém okně, řeš ho a odpovědi zapisuj sem. U úloh A–D klikni na písmeno, u ostatních napiš odpověď do pole (u A/N úloh např. „A N N A"). Odpovědi se ukládají v tomto zařízení.','Тестийг шинэ цонхонд нээж бодоод хариултаа энд бичнэ. A–D бодлогод үсгийг дарж, бусад бодлогод талбарт бичнэ (A/N бодлогод жишээ нь «A N N A»). Хариулт энэ төхөөрөмж дээр хадгалагдана.')}</p>
+    <div class="sh-grid">${rows.join('')}</div></div></div>`;
+  document.querySelectorAll('.sh-l').forEach(b=>b.addEventListener('click',()=>{
+    const i=b.dataset.i,a=sh.answers[i]||(sh.answers[i]={c:'',x:''});a.c=a.c===b.dataset.l?'':b.dataset.l;saveSheet(t,sh.answers);
+    document.querySelectorAll(`.sh-l[data-i="${i}"]`).forEach(x=>x.classList.toggle('is-on',x.dataset.l===a.c));
+  }));
+  document.querySelectorAll('.sh-x').forEach(inp=>inp.addEventListener('input',()=>{
+    const a=sh.answers[inp.dataset.i]||(sh.answers[inp.dataset.i]={c:'',x:''});a.x=inp.value;saveSheet(t,sh.answers);
+  }));
+  document.getElementById('sheet-done').addEventListener('click',()=>{sh.done=true;clearInterval(state.sheetTimer);state.view='sheetdone';render();window.scrollTo({top:0});});
+}
+function renderSheetDone(){
+  const sh=state.sheet,t=sh.t,used=Math.min(sh.minutes*60,Math.round((Date.now()-(sh.endAt-sh.minutes*60000))/1000));
+  const lines=[];for(let i=1;i<=sh.n;i++){const a=sh.answers[i]||{};lines.push(`<tr><td>${i}</td><td>${a.c||'—'}</td><td>${escAttr(a.x||'')||'—'}</td></tr>`);}
+  const answered=Object.values(sh.answers).filter(a=>a&&(a.c||a.x)).length;
+  app.innerHTML=`<div class="exercise-shell"><div class="exercise-page">
+    <div class="exercise-topbar"><button class="back-link" id="back-btn">${T('← Zpět na testy','← Тестүүд рүү буцах')}</button></div>
+    <div class="score-card"><div class="score-big">${answered}<span> / ${sh.n} ${T('vyplněno','бөглөсөн')}</span></div>
+      <div class="score-sub">${t.label} ${t.year} · ${T('čas','хугацаа')} ${fmtTime(used)} / ${fmtTime(sh.minutes*60)}</div>
+      ${sh.timeout?`<div class="score-msg">⏱ ${T('Čas vypršel.','Хугацаа дууссан.')}</div>`:''}</div>
+    <p class="off-hint">${T('Správné odpovědi (klíč) najdeš na webu CERMAT. Porovnej je s tabulkou níže.','Зөв хариуг (түлхүүр) CERMAT-ийн сайтаас олно. Доорх хүснэгттэй тулгана уу.')} <a href="https://cermat.gov.cz/" target="_blank" rel="noopener noreferrer">cermat.gov.cz</a></p>
+    <div class="ls-tw"><table class="ls-table"><thead><tr><th>#</th><th>${T('Volba','Сонголт')}</th><th>${T('Odpověď','Хариулт')}</th></tr></thead><tbody>${lines.join('')}</tbody></table></div>
+    <div class="test-actions"><button class="ghost-btn" id="sheet-clear">${T('Vymazat odpovědi','Хариулт арилгах')}</button><button class="next-btn" id="sheet-again">${T('Znovu s časovačem','Дахин тоолууртай')}</button></div></div></div>`;
+  document.getElementById('back-btn').addEventListener('click',()=>{navigate(()=>{state.view='menu';state.tab='official';});});
+  document.getElementById('sheet-clear').addEventListener('click',()=>{sh.answers={};saveSheet(t,{});renderSheetDone();});
+  document.getElementById('sheet-again').addEventListener('click',()=>startSheet(OFFICIAL_TESTS.indexOf(t)));
 }
 
 /* ---------- Render ---------- */
@@ -2773,6 +2837,8 @@ function render(){
   else if(state.view==='test') renderTest();
   else if(state.view==='testresult') renderTestResult();
   else if(state.view==='lesson') renderLesson();
+  else if(state.view==='sheet') renderSheet();
+  else if(state.view==='sheetdone') renderSheetDone();
   else renderExercise();
 }
 
